@@ -2,6 +2,7 @@ from django.shortcuts import render
 
 from rest_framework.response import Response
 from rest_framework import status
+from django.http import Http404
 
 from django.core.exceptions import ObjectDoesNotExist
 
@@ -18,38 +19,29 @@ logger = logging.getLogger(__name__)
 
 # Create your views here.
 
-class AdditionAPIView(APIView):
-    def get(self, request, format=None):
-        ''' View a addition with the given id or all in id not given'''
+class AdditionDetail(APIView):
 
+    def get_object(self, pk):
         try:
-            id = self.request.query_params.get('addition_id')
-            # logger.error('post try:')
-            logger.error(id)
-        except:
-            id = None
+            return Addition.objects.get(id=pk)
+        except Addition.DoesNotExist:
+            raise Http404
 
+    def get(self, request, pk=None, format=None):
+        ''' View a addition with the given pk or all addition on is_available true if pk is None'''
 
-        if id is not None:
-            try:
-                calculation = Addition.objects.get(id = id, is_available = True)
-                serializer = AdditionSerializer(calculation, many=False)
-                # logger.error('addition serializer')
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            except:
-                return Response(status=status.HTTP_404_NOT_FOUND)
-        
-        calculations = Addition.objects.filter(is_available = True)
+        if  pk is None:
+            snippet = Addition.objects.filter(is_available=True)
+            serializer = AdditionSerializer(snippet, many=True)
 
-        if calculations:
-            serializer = AdditionSerializer(calculations,many=True)
-
-            return Response(serializer.data, status=status.HTTP_200_OK)
         else:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-                
-    def post(self,request, format=None):
-            ''' Create a new addition '''  
+            snippet = self.get_object(pk)
+            serializer = AdditionSerializer(snippet)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def post(self, request, format=None):
+            ''' Create a new addition on given number1 and number2'''  
 
             serializer = AdditionSerializer(data = request.data)
 
